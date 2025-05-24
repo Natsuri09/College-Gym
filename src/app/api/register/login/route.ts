@@ -6,6 +6,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
+  console.log('Login route called');
   try {
     // Verify JWT_SECRET is set
     if (!process.env.JWT_SECRET) {
@@ -16,10 +17,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const { emailOrUsername, password } = await request.json();
+    console.log('Attempting to parse request body');
+    const body = await request.json();
+    console.log('Request body parsed successfully');
+    
+    const { emailOrUsername, password } = body;
 
     // Input validation
     if (!emailOrUsername || !password) {
+      console.log('Missing credentials:', { emailOrUsername: !!emailOrUsername, password: !!password });
       return NextResponse.json(
         { error: 'Both email/username and password are required' },
         { status: 400 }
@@ -28,9 +34,11 @@ export async function POST(request: Request) {
 
     // Normalize input
     const input = emailOrUsername.trim().toLowerCase();
+    console.log('Searching for user with input:', input);
 
     // Special case: Only allow this manager (no DB lookup)
     if (input === 'npema2017@gmail.com' && password === 'Natsuri09') {
+      console.log('Manager login detected');
       const userData = {
         id: 'manager-id',
         name: 'Gym Manager',
@@ -51,6 +59,7 @@ export async function POST(request: Request) {
     }
 
     try {
+      console.log('Attempting database query');
       // Find user
       const user = await prisma.user.findFirst({
         where: {
@@ -62,14 +71,18 @@ export async function POST(request: Request) {
       });
 
       if (!user) {
+        console.log('No user found with credentials');
         return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
       }
 
+      console.log('User found, verifying password');
       const isPasswordCorrect = await bcrypt.compare(password, user.password);
       if (!isPasswordCorrect) {
+        console.log('Invalid password');
         return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
       }
 
+      console.log('Password verified, generating token');
       // Generate JWT
       const token = jwt.sign(
         { userId: user.id, email: user.email, role: user.role },
@@ -86,22 +99,35 @@ export async function POST(request: Request) {
         role: user.role,
       };
 
+      console.log('Login successful');
       return NextResponse.json({
         message: 'Login successful',
         token,
         user: userData,
       });
-    } catch (dbError) {
-      console.error('Database error:', dbError);
+    } catch (dbError: unknown) {
+      console.error('Database error details:', {
+        name: dbError instanceof Error ? dbError.name : 'Unknown',
+        message: dbError instanceof Error ? dbError.message : String(dbError),
+        stack: dbError instanceof Error ? dbError.stack : 'No stack trace'
+      });
       return NextResponse.json(
-        { error: 'Database connection error' },
+        { error: 'Database connection error', details: dbError instanceof Error ? dbError.message : String(dbError) },
         { status: 500 }
       );
     }
-  } catch (error) {
-    console.error('Login error:', error);
+  } catch (error: unknown) {
+    console.error('Login error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : 'No stack trace'
+    });
     return NextResponse.json(
-      { error: 'Internal Server Error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        error: 'Internal Server Error', 
+        details: error instanceof Error ? error.message : String(error),
+        type: error instanceof Error ? error.name : 'Unknown'
+      },
       { status: 500 }
     );
   }
