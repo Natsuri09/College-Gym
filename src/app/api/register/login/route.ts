@@ -20,42 +20,18 @@ export async function POST(request: Request) {
 
     // Special case: Only allow this manager (no DB lookup)
     if (input === 'npema2017@gmail.com' && password === 'Natsuri09') {
-      // First, check if manager exists in database
-      let manager = await prisma.user.findFirst({
-        where: {
-          email: 'npema2017@gmail.com',
-          role: 'manager'
-        }
-      });
-
-      // If manager doesn't exist, create one
-      if (!manager) {
-        const hashedPassword = await bcrypt.hash('Natsuri09', 10);
-        manager = await prisma.user.create({
-          data: {
-            name: 'Gym Manager',
-            email: 'npema2017@gmail.com',
-            username: 'manager',
-            password: hashedPassword,
-            role: 'manager'
-          }
-        });
-      }
-
       const userData = {
-        id: manager.id,
-        name: manager.name,
-        email: manager.email,
-        username: manager.username,
-        role: manager.role,
+        id: 'manager-id',
+        name: 'Gym Manager',
+        email: 'npema2017@gmail.com',
+        username: 'manager',
+        role: 'manager',
       };
-
       const token = jwt.sign(
-        { userId: manager.id, email: manager.email, role: manager.role },
+        { userId: userData.id, email: userData.email, role: userData.role },
         process.env.JWT_SECRET!,
         { expiresIn: '1h' }
       );
-
       return NextResponse.json({
         message: 'Login successful',
         token,

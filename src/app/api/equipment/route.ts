@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
 import { writeFile } from 'fs/promises';
 import path from 'path';
-import { prisma } from '@/lib/prisma';
+
+const prisma = new PrismaClient();
 
 export async function GET() {
   try {
@@ -14,7 +16,7 @@ export async function GET() {
   } catch (error) {
     console.error('Error fetching equipment:', error);
     return NextResponse.json(
-      { error: 'Error fetching equipment', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Error fetching equipment' },
       { status: 500 }
     );
   }
@@ -27,8 +29,6 @@ export async function POST(request: Request) {
 
     const name = formData.get('name') as string;
     const description = formData.get('description') as string;
-    const quantity = parseInt(formData.get('quantity') as string) || 1;
-    const status = formData.get('status') as string || 'available';
     const imageFile = formData.get('image') as File;
 
     if (!name || !description) {
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       } catch (error) {
         console.error('Error uploading image:', error);
         return NextResponse.json(
-          { error: 'Error uploading image', details: error instanceof Error ? error.message : 'Unknown error' },
+          { error: 'Error uploading image' },
           { status: 500 }
         );
       }
@@ -67,8 +67,6 @@ export async function POST(request: Request) {
         name,
         description,
         imageUrl,
-        quantity,
-        status,
       },
     });
 
