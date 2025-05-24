@@ -5,11 +5,17 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
+  console.log('Register route called');
   try {
-    const { name, email, username, password, role } = await request.json();
+    console.log('Attempting to parse request body');
+    const body = await request.json();
+    console.log('Request body parsed successfully');
+    
+    const { name, email, username, password, role } = body;
 
     // Validate required fields
     if (!name || !email || !username || !password) {
+      console.log('Missing required fields:', { name: !!name, email: !!email, username: !!username, password: !!password });
       return NextResponse.json(
         { error: 'All fields are required' },
         { status: 400 }
@@ -18,43 +24,68 @@ export async function POST(request: Request) {
 
     // Normalize email
     const normalizedEmail = email.toLowerCase().trim();
+    console.log('Checking for existing user with email:', normalizedEmail, 'or username:', username);
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [{ email: normalizedEmail }, { username }],
-      },
-    });
+    try {
+      // Check if user already exists
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          OR: [{ email: normalizedEmail }, { username }],
+        },
+      });
 
-    if (existingUser) {
+      if (existingUser) {
+        console.log('User already exists:', { email: existingUser.email, username: existingUser.username });
+        return NextResponse.json(
+          { error: 'Email or username already exists' },
+          { status: 400 }
+        );
+      }
+
+      console.log('Hashing password');
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      console.log('Creating new user');
+      // Create new user
+      const user = await prisma.user.create({
+        data: {
+          name,
+          email: normalizedEmail,
+          username,
+          password: hashedPassword,
+          role: role || 'GymMember',
+        },
+      });
+
+      console.log('User created successfully:', { id: user.id, email: user.email });
       return NextResponse.json(
-        { error: 'Email or username already exists' },
-        { status: 400 }
+        { message: 'User registered successfully', userId: user.id },
+        { status: 201 }
+      );
+    } catch (dbError: unknown) {
+      console.error('Database error details:', {
+        name: dbError instanceof Error ? dbError.name : 'Unknown',
+        message: dbError instanceof Error ? dbError.message : String(dbError),
+        stack: dbError instanceof Error ? dbError.stack : 'No stack trace'
+      });
+      return NextResponse.json(
+        { error: 'Database error', details: dbError instanceof Error ? dbError.message : String(dbError) },
+        { status: 500 }
       );
     }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create new user
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email: normalizedEmail,
-        username,
-        password: hashedPassword,
-        role: role || 'GymMember',
-      },
+  } catch (error: unknown) {
+    console.error('Register error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : 'No stack trace'
     });
-
     return NextResponse.json(
-      { message: 'User registered successfully', userId: user.id },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error('Register error:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { 
+        error: 'Internal Server Error', 
+        details: error instanceof Error ? error.message : String(error),
+        type: error instanceof Error ? error.name : 'Unknown'
+      },
       { status: 500 }
     );
   }
