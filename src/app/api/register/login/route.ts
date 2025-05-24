@@ -7,6 +7,15 @@ const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
+    // Verify JWT_SECRET is set
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET is not configured');
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
     const { emailOrUsername, password } = await request.json();
 
     // Input validation
@@ -31,7 +40,7 @@ export async function POST(request: Request) {
       };
       const token = jwt.sign(
         { userId: userData.id, email: userData.email, role: userData.role },
-        process.env.JWT_SECRET!,
+        process.env.JWT_SECRET,
         { expiresIn: '1h' }
       );
       return NextResponse.json({
@@ -41,48 +50,59 @@ export async function POST(request: Request) {
       });
     }
 
-    // Find user
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: input },
-          { username: emailOrUsername }, // username might be case-sensitive
-        ],
-      },
-    });
+    try {
+      // Find user
+      const user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: input },
+            { username: emailOrUsername }, // username might be case-sensitive
+          ],
+        },
+      });
 
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      if (!user) {
+        return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      }
+
+      const isPasswordCorrect = await bcrypt.compare(password, user.password);
+      if (!isPasswordCorrect) {
+        return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      }
+
+      // Generate JWT
+      const token = jwt.sign(
+        { userId: user.id, email: user.email, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
+      );
+
+      // Store user data in localStorage
+      const userData = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+      };
+
+      return NextResponse.json({
+        message: 'Login successful',
+        token,
+        user: userData,
+      });
+    } catch (dbError) {
+      console.error('Database error:', dbError);
+      return NextResponse.json(
+        { error: 'Database connection error' },
+        { status: 500 }
+      );
     }
-
-    const isPasswordCorrect = await bcrypt.compare(password, user.password);
-    if (!isPasswordCorrect) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-    }
-
-    // Generate JWT
-    const token = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET!,
-      { expiresIn: '1h' }
-    );
-
-    // Store user data in localStorage
-    const userData = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      username: user.username,
-      role: user.role,
-    };
-
-    return NextResponse.json({
-      message: 'Login successful',
-      token,
-      user: userData,
-    });
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
 }
