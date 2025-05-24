@@ -5,6 +5,44 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// Add a GET method for testing
+export async function GET() {
+  try {
+    // Test environment variables
+    const envCheck = {
+      hasJwtSecret: !!process.env.JWT_SECRET,
+      hasDatabaseUrl: !!process.env.DATABASE_URL,
+    };
+
+    // Test database connection
+    let dbStatus = 'not tested';
+    try {
+      await prisma.$connect();
+      dbStatus = 'connected';
+    } catch (dbError) {
+      dbStatus = 'error: ' + (dbError instanceof Error ? dbError.message : String(dbError));
+    } finally {
+      await prisma.$disconnect();
+    }
+
+    return NextResponse.json({
+      status: 'ok',
+      environment: envCheck,
+      database: dbStatus,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Test endpoint error:', error);
+    return NextResponse.json(
+      { 
+        error: 'Test endpoint error',
+        details: error instanceof Error ? error.message : String(error)
+      },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: Request) {
   console.log('Login route called');
   try {
