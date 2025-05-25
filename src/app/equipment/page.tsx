@@ -169,7 +169,7 @@ export default function EquipmentPage() {
           <h2 className="mb-5 text-center display-4 fw-bold">Our Gym Equipment</h2>
           <div className="row g-4">
             {(equipment.length > 0 ? equipment : equipmentItems).map((item: any) => (
-              <div key={item.id || item.name} className="col-md-4 col-sm-6" data-aos="fade-up" data-aos-delay={item.delay}>
+              <div key={`${item.id}-${item.name}`} className="col-md-4 col-sm-6" data-aos="fade-up" data-aos-delay={item.delay}>
                 <div className="overflow-hidden border-0 shadow-lg card equipment-card h-100">
                   <div style={{ position: 'relative', height: '200px' }}>
                     <img
