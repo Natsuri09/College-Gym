@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { v2 as cloudinary } from 'cloudinary';
 
 const prisma = new PrismaClient();
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function GET() {
   try {
@@ -37,8 +45,36 @@ export async function POST(request: Request) {
       );
     }
 
-    // For now, use a default image URL since we can't store files in Vercel
-    const imageUrl = '/images/default-equipment.png';
+    let imageUrl = '/images/equip.jpg'; // Default image
+
+    if (imageFile) {
+      try {
+        // Convert the file to base64
+        const bytes = await imageFile.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        const base64Image = buffer.toString('base64');
+        const dataURI = `data:${imageFile.type};base64,${base64Image}`;
+
+        // Upload to Cloudinary
+        const result = await new Promise((resolve, reject) => {
+          cloudinary.uploader.upload(dataURI, {
+            folder: 'gym-equipment',
+          }, (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          });
+        });
+
+        imageUrl = (result as any).secure_url;
+        console.log('Image uploaded successfully:', imageUrl);
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        return NextResponse.json(
+          { error: 'Error uploading image' },
+          { status: 500 }
+        );
+      }
+    }
 
     // Create equipment with the image URL
     const equipment = await prisma.equipment.create({
