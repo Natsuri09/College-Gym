@@ -6,9 +6,13 @@ const prisma = new PrismaClient();
 export async function POST(req: NextRequest) {
   try {
     const { userId, date, activity, duration, calories } = await req.json();
+    const numericUserId = Number(userId);
+    if (!userId || isNaN(numericUserId)) {
+      return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
+    }
     console.log('Received:', { userId, date, activity, duration, calories });
     const entry = await prisma.caloriesEntry.create({
-      data: { userId, date, activity, duration, calories }
+      data: { userId: numericUserId, date, activity, duration, calories }
     });
     console.log('Created entry:', entry);
     return NextResponse.json(entry);
@@ -21,9 +25,12 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const userId = req.nextUrl.searchParams.get('userId');
-    if (!userId) return NextResponse.json([], { status: 400 });
+    const numericUserId = Number(userId);
+    if (!userId || isNaN(numericUserId)) {
+      return NextResponse.json([], { status: 400 });
+    }
     const entries = await prisma.caloriesEntry.findMany({
-      where: { userId },
+      where: { userId: numericUserId },
       orderBy: { date: 'desc' }
     });
     return NextResponse.json(entries);
@@ -31,4 +38,4 @@ export async function GET(req: NextRequest) {
     console.error('API GET error:', err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
-} 
+}

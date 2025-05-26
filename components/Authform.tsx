@@ -85,7 +85,7 @@ export default function AuthForm({ type, role }: Props) {
       )}
       <input
         name="username"
-        placeholder="Username"
+        placeholder={type === 'login' ? 'Email' : 'Username'}
         value={formData.username}
         onChange={handleChange}
         required

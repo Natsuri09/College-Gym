@@ -9,7 +9,7 @@ export default function ManagerLanding() {
       <div className="choose-role-box">
         <FaUserTie className="mb-2 role-icon" />
         <h2 className="choose-role-title">Manager Portal</h2>
-        <p className="choose-role-subtitle">Access management features by logging in or registering below.</p>
+        <p className="choose-role-subtitle">Access management features by logging in .</p>
         <div className="choose-role-buttons">
           <button
             onClick={() => router.push('/manager/login')}

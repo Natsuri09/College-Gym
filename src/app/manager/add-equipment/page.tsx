@@ -20,13 +20,17 @@ export default function AddEquipmentPage() {
 
   useEffect(() => {
     AOS.init({ duration: 800, easing: 'ease-in-out', once: true });
+
+    // Get the user object from localStorage
     const user = localStorage.getItem('user');
     if (user) {
       const parsed = JSON.parse(user);
+      // Check if the user's role is 'manager'
       setIsManager(parsed.role?.toLowerCase() === 'manager');
       setName(parsed.name || 'User');
     }
-    // Fetch equipment list for manager
+
+    // Only fetch equipment if the user is a manager
     if (isManager) {
       fetch('/api/equipment')
         .then(res => res.json())
@@ -102,7 +106,7 @@ export default function AddEquipmentPage() {
       setTimeout(() => setMessage(''), 2000);
     }
   };
-
+// If the user is not a manager, show an unauthorized message and prevent access
   if (!isManager) {
     return (
       <div className="add-equipment-page">

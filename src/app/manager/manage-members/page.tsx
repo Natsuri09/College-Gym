@@ -15,6 +15,14 @@ export default function ManageMembersPage() {
   const [name, setName] = useState('User');
   const [profilePic] = useState('/images/default-avatar.png');
   const [calories] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newMember, setNewMember] = useState({
+    name: '',
+    email: '',
+    username: '',
+    password: '',
+    role: 'member'
+  });
   const router = useRouter();
 
   useEffect(() => {
@@ -23,16 +31,22 @@ export default function ManageMembersPage() {
     const user = localStorage.getItem('user');
     if (user) {
       const parsed = JSON.parse(user);
+      // Check if the user's role is 'manager'
       setIsManager(parsed.role?.toLowerCase() === 'manager');
       setName(parsed.name || 'User');
     }
+    // Only fetch members if the user is a manager
+    fetchMembers();
+  }, []);
+
+  const fetchMembers = () => {
     fetch('/api/members')
       .then(res => res.json())
       .then(data => {
         setMembers(data);
         setLoading(false);
       });
-  }, []);
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this member?')) return;
@@ -47,6 +61,65 @@ export default function ManageMembersPage() {
     window.location.href = '/';
   };
 
+  const handleAddMember = () => {
+    setShowAddModal(true);
+    setNewMember({
+      name: '',
+      email: '',
+      username: '',
+      password: '',
+      role: 'member'
+    });
+  };
+
+  const handleCloseModal = () => {
+    setShowAddModal(false);
+    setNewMember({
+      name: '',
+      email: '',
+      username: '',
+      password: '',
+      role: 'member'
+    });
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewMember(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('/api/members', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newMember),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to add member');
+      }
+
+      // Refresh the members list
+      fetchMembers();
+      setMessage('Member added successfully!');
+      handleCloseModal();
+      setTimeout(() => setMessage(''), 2000);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Error adding member. Please try again.');
+      setTimeout(() => setMessage(''), 2000);
+    }
+  };
+
+// If the user is not a manager, show an unauthorized message and prevent access
   if (!isManager) {
     return (
       <div className="manage-members-page">
@@ -105,6 +178,15 @@ export default function ManageMembersPage() {
       {/* Members Table Section */}
       <section className="container py-5">
         {message && <div className="alert alert-success">{message}</div>}
+        <div className="mb-4 d-flex justify-content-between align-items-center">
+          <h2 className="mb-0">Members List</h2>
+          <button 
+            className="btn btn-primary" 
+            onClick={handleAddMember}
+          >
+            Add New Member
+          </button>
+        </div>
         {loading ? (
           <div className="text-center">
             <div className="spinner-border" role="status">
@@ -145,6 +227,85 @@ export default function ManageMembersPage() {
           </div>
         )}
       </section>
+
+      {/* Add Member Modal */}
+      {showAddModal && (
+        <>
+          <div className="modal-backdrop show"></div>
+          <div className="modal show d-block" tabIndex={-1} style={{ zIndex: 1050 }}>
+            <div className="modal-dialog">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">Add New Member</h5>
+                  <button type="button" className="btn-close" onClick={handleCloseModal}></button>
+                </div>
+                <div className="modal-body">
+                  <form onSubmit={handleSubmit}>
+                    <div className="mb-3">
+                      <label htmlFor="name" className="form-label">Name</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="name"
+                        name="name"
+                        value={newMember.name}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <label htmlFor="email" className="form-label">Email</label>
+                      <input
+                        type="email"
+                        className="form-control"
+                        id="email"
+                        name="email"
+                        value={newMember.email}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <label htmlFor="username" className="form-label">Username</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="username"
+                        name="username"
+                        value={newMember.username}
+                        onChange={handleInputChange}
+                        required
+                        autoComplete="off"
+                        readOnly={false}
+                        disabled={false}
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <label htmlFor="password" className="form-label">Password</label>
+                      <input
+                        type="password"
+                        className="form-control"
+                        id="password"
+                        name="password"
+                        value={newMember.password}
+                        onChange={handleInputChange}
+                        required
+                        autoComplete="off"
+                        readOnly={false}
+                        disabled={false}
+                      />
+                    </div>
+                    <div className="modal-footer">
+                      <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Cancel</button>
+                      <button type="submit" className="btn btn-primary">Add Member</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       <Footer />
 
@@ -316,6 +477,50 @@ export default function ManageMembersPage() {
             font-size: 1.1rem;
             padding: 1rem;
           }
+        }
+        .modal {
+          background-color: rgba(0, 0, 0, 0.5);
+        }
+        .modal-backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(0, 0, 0, 0.5);
+          z-index: 1040 !important;
+          pointer-events: none;
+        }
+        .modal.show {
+          z-index: 1050 !important;
+          pointer-events: auto;
+        }
+        .modal-dialog {
+          margin: 1.75rem auto;
+          max-width: 500px;
+        }
+        .modal-content {
+          position: relative;
+          background-color: #fff;
+          border-radius: 0.3rem;
+          box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+        .modal-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 1rem;
+          border-bottom: 1px solid #dee2e6;
+        }
+        .modal-body {
+          padding: 1rem;
+        }
+        .modal-footer {
+          padding: 1rem;
+          border-top: 1px solid #dee2e6;
+          display: flex;
+          justify-content: flex-end;
+          gap: 0.5rem;
         }
       `}</style>
     </div>

@@ -8,7 +8,8 @@ export async function GET(req: NextRequest) {
     const userId = req.nextUrl.searchParams.get('userId');
     if (!userId) return NextResponse.json({ error: 'No userId' }, { status: 400 });
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const numericUserId = Number(userId);
+    const user = await prisma.user.findUnique({ where: { id: numericUserId } });
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     return NextResponse.json({ name: user.name });
