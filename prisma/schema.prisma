@@ -22,6 +22,7 @@ model User {
   role      String
   createdAt DateTime @default(now())
   calories  CaloriesEntry[]
+  bookings  GymBooking[]
 }
 
 model CaloriesEntry {
@@ -43,5 +44,15 @@ model Equipment {
   quantity    Int      @default(1)
   status      String   @default("available")
   createdAt   DateTime @default(now())
+}
+
+model GymBooking {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  startTime DateTime
+  endTime   DateTime
+  status    String   @default("pending") // "pending", "approved", "rejected"
+  createdAt DateTime @default(now())
 }
 

@@ -59,9 +59,13 @@ export default function ProfileDropdown({ calories = '', onLogout }: ProfileDrop
               <div className="profile-menu-item" onClick={() => router.push('/calories')}>Calories Burned{calories}</div>
               <div className="profile-menu-item" onClick={() => router.push('/manager/add-equipment')}>Add Equipment</div>
               <div className="profile-menu-item" onClick={() => router.push('/manager/manage-members')}>Manage Members</div>
+              <div className="profile-menu-item" onClick={() => router.push('/manager/bookings')}>Manage Bookings</div>
             </>
           ) : (
-            <div className="profile-menu-item" onClick={() => router.push('/calories')}>Calories Burned{calories}</div>
+            <>
+              <div className="profile-menu-item" onClick={() => router.push('/calories')}>Calories Burned{calories}</div>
+              <div className="profile-menu-item" onClick={() => router.push('/gymmember/booking')}>Book Gym</div>
+            </>
           )}
           <div className="profile-menu-item logout" onClick={handleLogout}>Logout</div>
         </div>
